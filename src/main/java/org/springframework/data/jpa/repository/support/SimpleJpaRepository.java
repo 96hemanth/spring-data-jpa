@@ -24,12 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 
-import javax.persistence.EntityManager;
-import javax.persistence.LockModeType;
-import javax.persistence.NoResultException;
-import javax.persistence.Parameter;
-import javax.persistence.Query;
-import javax.persistence.TypedQuery;
+import javax.persistence.*;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Order;
@@ -52,6 +47,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.query.QueryUtils;
 import org.springframework.data.jpa.repository.support.QueryHints.NoHints;
+import org.springframework.data.jpa.util.SpaceRegistryUtil;
 import org.springframework.data.repository.support.PageableExecutionUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
@@ -77,9 +73,9 @@ public class SimpleJpaRepository<T, ID> implements JpaRepository<T, ID>, JpaSpec
 
 	private static final String ID_MUST_NOT_BE_NULL = "The given id must not be null!";
 
-	private final JpaEntityInformation<T, ?> entityInformation;
-	private final EntityManager em;
-	private final PersistenceProvider provider;
+	private  JpaEntityInformation<T, ?> entityInformation;
+	private  EntityManager em;
+	private  PersistenceProvider provider;
 
 	private @Nullable CrudMethodMetadata metadata;
 
@@ -487,12 +483,22 @@ public class SimpleJpaRepository<T, ID> implements JpaRepository<T, ID>, JpaSpec
 	public <S extends T> S save(S entity) {
 
 		if (entityInformation.isNew(entity)) {
-			em.persist(entity);
+			setSchema(entity);
+			this.em.persist(entity);
 			return entity;
 		} else {
 			return em.merge(entity);
 		}
 	}
+
+
+	private <S extends T> void setSchema(S entity){
+		String spaceId = SpaceRegistryUtil.getSpaceId(entity);
+		this.em.createNativeQuery("set schema '"+spaceId+"'").executeUpdate();
+		EntityManager entityManager = Persistence.createEntityManagerFactory("employeeEntity").createEntityManager();
+		entityManager.close();
+	}
+
 
 	/*
 	 * (non-Javadoc)
